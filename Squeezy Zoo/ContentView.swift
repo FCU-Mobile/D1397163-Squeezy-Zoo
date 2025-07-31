@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var isShaking = true
     @State private var rotationAngle: Double = 0
     @State private var lastTapTime = Date()
+    @State private var shouldShake = false
 
     @State private var energyLevel: Int = 0
     @State private var heartScale: CGFloat = 1.0
@@ -70,10 +71,10 @@ struct ContentView: View {
                         ? (isPressed ? CGSize(width: 1.15, height: 0.85) : CGSize(width: 1.3, height: 1.3))
                         : CGSize(width: 1.0, height: 1.0)
                     )
-                    .rotationEffect(.degrees(isShaking ? rotationAngle : 0))
+                    .rotationEffect(.degrees(rotationAngle))
                     .animation(
-                        isShaking
-                        ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true)
+                        shouldShake
+                        ? Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
                         : .default,
                         value: rotationAngle
                     )
@@ -190,10 +191,12 @@ struct ContentView: View {
     }
 
     private func startShaking() {
+        shouldShake = true
+        rotationAngle = 5 // 觸發動畫
+    }
+    private func stopShaking() {
+        shouldShake = false
         rotationAngle = 0
-        withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-            rotationAngle = 5
-        }
     }
 
     private func animateHeart() {
