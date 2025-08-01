@@ -1,5 +1,13 @@
 import SwiftUI
 
+struct FloatingSymbol: Identifiable {
+    let id = UUID()
+    let name: String
+    let x: CGFloat
+    let y: CGFloat
+    let size: CGFloat
+}
+
 struct ContentView: View {
     @State private var selectedAnimal: String = "pinkBear"
     @State private var animalNames: [String: String] = [
@@ -24,12 +32,13 @@ struct ContentView: View {
     @State private var isShaking = true
     @State private var rotationAngle: Double = 0
     @State private var lastTapTime = Date()
-    @State private var shouldShake = false
 
     @State private var energyLevel: Int = 0
-    @State private var heartScale: CGFloat = 1.0
-    @State private var heartAnimating = false
+    @State private var heartPulse = false
     private let maxEnergy = 9
+
+    let medicalSymbols = ["syringe.fill", "pill.fill", "ivfluid.bag", "cross.vial", "cross.case"]
+    @State private var floatingSymbols: [FloatingSymbol] = []
 
     var body: some View {
         VStack(spacing: 20) {
@@ -47,19 +56,24 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.3), value: hasCentered)
 
             ZStack {
-                Image(systemName: "heart.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundColor(.pink)
-                    .opacity(0.2)
-                    .frame(width: 240, height: 240)
-                    .scaleEffect(heartScale)
-                    .onChange(of: energyLevel) { _, newLevel in
-                        if newLevel == maxEnergy && hasCentered {
-                            heartAnimating = true
-                            animateHeart()
-                        }
-                    }
+                if energyLevel == maxEnergy && heartPulse && hasCentered {
+                    Image(systemName: "heart.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundColor(.pink)
+                        .opacity(0.2)
+                        .frame(width: 240, height: 240)
+                        .scaleEffect(1.2)
+                        .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: UUID())
+                } else {
+                    Image(systemName: "heart.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundColor(.pink)
+                        .opacity(0.2)
+                        .frame(width: 240, height: 240)
+                        .scaleEffect(1.0)
+                }
 
                 Image(selectedAnimal)
                     .resizable()
@@ -72,12 +86,6 @@ struct ContentView: View {
                         : CGSize(width: 1.0, height: 1.0)
                     )
                     .rotationEffect(.degrees(rotationAngle))
-                    .animation(
-                        shouldShake
-                        ? Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
-                        : .default,
-                        value: rotationAngle
-                    )
                     .onTapGesture {
                         lastTapTime = Date()
                         if !hasCentered {
@@ -91,9 +99,9 @@ struct ContentView: View {
                                 energyLevel += 1
                             }
                             if energyLevel == maxEnergy {
-                                heartAnimating = true
-                                animateHeart()
+                                heartPulse = true
                             }
+                            spawnFloatingSymbol()
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 isPressed = false
                             }
@@ -103,6 +111,10 @@ struct ContentView: View {
                     .onAppear {
                         startShaking()
                     }
+
+                ForEach(floatingSymbols) { symbol in
+                    FloatingSymbolView(symbol: symbol.name, x: symbol.x, y: symbol.y, size: symbol.size)
+                }
             }
 
             if energyLevel == 0 {
@@ -191,28 +203,21 @@ struct ContentView: View {
     }
 
     private func startShaking() {
-        shouldShake = true
-        rotationAngle = 5 // 觸發動畫
-    }
-    private func stopShaking() {
-        shouldShake = false
-        rotationAngle = 0
+        withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+            rotationAngle = 5
+        }
     }
 
-    private func animateHeart() {
-        guard heartAnimating else { return }
-        withAnimation(.easeInOut(duration: 0.5)) {
-            heartScale = 1.2
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                heartScale = 1.0
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if heartAnimating {
-                    animateHeart()
-                }
-            }
+    private func spawnFloatingSymbol() {
+        let symbol = FloatingSymbol(
+            name: medicalSymbols.randomElement()!,
+            x: CGFloat.random(in: 80...300),
+            y: CGFloat.random(in: 300...420),
+            size: CGFloat.random(in: 30...50)
+        )
+        floatingSymbols.append(symbol)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            floatingSymbols.removeAll { $0.id == symbol.id }
         }
     }
 
@@ -220,15 +225,45 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             if Date().timeIntervalSince(lastTapTime) >= 2 {
                 withAnimation(.easeInOut(duration: 0.4)) {
+                    rotationAngle = 0
                     isShaking = true
                     hasCentered = false
                     energyLevel = 0
                 }
-                heartAnimating = false
-                heartScale = 1.0
-                startShaking()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    startShaking()
+                    heartPulse = false
+                }
             }
         }
+    }
+}
+
+struct FloatingSymbolView: View {
+    let symbol: String
+    let x: CGFloat
+    let y: CGFloat
+    let size: CGFloat
+    @State private var offsetY: CGFloat = 0
+    @State private var opacity: Double = 1.0
+
+    var body: some View {
+        Image(systemName: symbol)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .foregroundStyle(
+                Color.blue, Color.cyan)
+
+            .position(x: x, y: y + offsetY)
+            .opacity(opacity)
+            .symbolRenderingMode(.palette)
+            .onAppear {
+                withAnimation(.easeOut(duration: 1.2)) {
+                    offsetY = -100
+                    opacity = 0
+                }
+            }
     }
 }
 
