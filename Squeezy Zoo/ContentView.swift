@@ -54,7 +54,7 @@ struct ContentView: View {
                     .opacity(0.2)
                     .frame(width: 240, height: 240)
                     .scaleEffect(heartScale)
-                    .onChange(of: energyLevel) { newLevel in
+                    .onChange(of: energyLevel) { _, newLevel in
                         if newLevel == maxEnergy && hasCentered {
                             heartAnimating = true
                             animateHeart()
