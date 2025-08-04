@@ -90,7 +90,6 @@ struct ContentView: View {
                         lastTapTime = Date()
                         if !hasCentered {
                             withAnimation(.easeInOut(duration: 0.4)) {
-                                isShaking = false
                                 hasCentered = true
                             }
                         } else {
@@ -270,3 +269,4 @@ struct FloatingSymbolView: View {
 #Preview {
     ContentView()
 }
+
